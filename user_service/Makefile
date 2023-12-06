@@ -1,0 +1,2 @@
+proto:
+	protoc --proto_path=./api/models/proto/ --go_out=./api/client/gRPC/ --go_opt=paths=source_relative --go-grpc_out=./api/client/gRPC/ --go-grpc_opt=paths=source_relative ./api/models/proto/user.proto

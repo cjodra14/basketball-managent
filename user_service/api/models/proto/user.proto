@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+
+option go_package="github.com/cjodra14/telemetry_backend/api/client/grpc;grpc";
+
+
+service UserService {
+    rpc CreateUser(CreateUserRequest) returns (UserResponse);
+    rpc AuthenticateUser(AuthenticateRequest) returns (TokenResponse);
+    rpc GetUser(GetUserRequest) returns (UserResponse);
+    rpc UpdateUser(UpdateUserRequest) returns (UserResponse);
+    rpc DeleteUser(DeleteUserRequest) returns (DeleteUserResponse);
+}
+
+message CreateUserRequest {
+    string email = 1;
+    string password = 2;
+    string name = 3;
+    string surname = 4;
+    string role = 5;
+}
+
+message AuthenticateRequest {
+    string email = 1;
+    string password = 2;
+}
+
+message GetUserRequest {
+    string id = 1;
+}
+
+message UpdateUserRequest {
+    string id = 1;
+    string role = 2;
+}
+
+message DeleteUserRequest {
+    string id = 1;
+}
+message DeleteUserResponse {
+    bool deleted = 1;
+}
+
+message UserResponse {
+    string id = 1;
+    string email = 2;
+    string role = 3;
+}
+
+message TokenResponse {
+    string token = 1;
+}
