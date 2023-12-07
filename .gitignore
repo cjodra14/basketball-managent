@@ -19,3 +19,8 @@
 
 # Go workspace file
 go.work
+
+# VS code config
+launch.json
+
+__debug*

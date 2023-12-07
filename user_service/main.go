@@ -2,10 +2,14 @@ package main
 
 import (
 	"github.com/cjodra14/basketball-management/user_service/configuration"
+	grpc "github.com/cjodra14/basketball-management/user_service/server/grpc"
 	"github.com/cjodra14/basketball-management/user_service/server/rest"
-	"fmt"
+	"github.com/cjodra14/basketball-management/user_service/services/users"
+	"github.com/cjodra14/basketball-management/user_service/storage/postgres"
+	"github.com/cjodra14/basketball-management/user_service/tracing"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
 
-	"github.com/gin-gonic/gin"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/oklog/run"
 	"github.com/sirupsen/logrus"
@@ -24,28 +28,33 @@ func main() {
 
 	logrus.Debug(config)
 
-	router := gin.Default()
+	tp, tpErr := tracing.JaegerTraceProvider()
+	if tpErr != nil {
+		logrus.Fatal(tpErr)
+	}
+	otel.SetTracerProvider(tp)
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
 
-	address := fmt.Sprintf("%s:%s", config.RESTServer.Address, config.RESTServer.Port)
-
-	if err := router.Run(address); err != nil {
+	storage, err := postgres.NewPostgresUserStorage(config.Storage.PostgresConfiguration)
+	if err != nil {
 		logrus.Fatal(err)
 	}
+	userService := users.New(storage)
 
 	var group run.Group
 
 	group.Add(func() error {
 
-		return rest.Init(config.RESTServer)
+		return rest.Init(config.RESTServer, userService)
 	}, func(e error) {
 		logrus.Fatal(e)
 	})
 
-	// group.Add(func() error {
-	// 	return grpcServer.InitTelemetryServiceServer(conf.GRPCServer, telemetryService)
-	// }, func(e error) {
-	// 	log.Fatal(e)
-	// })
+	group.Add(func() error {
+		return grpc.InitUserServiceServer(config.GRPCServer, userService)
+	}, func(e error) {
+		logrus.Fatal(e)
+	})
 
 	if err := group.Run(); err != nil {
 		logrus.Fatal(err)

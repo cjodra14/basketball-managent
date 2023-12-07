@@ -1,16 +1,16 @@
-package server
+package grpc
 
 import (
 	// "context"
 
-	// grpcAPI "github.com/cjodra14/basketball-management/api/client/grpc"
-	// apiModels "github.com/cjodra14/telemetry_backend/api/models"
-	// "github.com/cjodra14/telemetry_backend/services"
-	// grpcConfig "github.com/cjodra14/telemetry_commons/configuration/grpc"
-	// commonsGrpc "github.com/cjodra14/telemetry_commons/services/grpc"
-	"github.com/pkg/errors"
-)
+	"context"
 
+	grpcAPI "github.com/cjodra14/basketball-management/user_service/api/client/gRPC"
+	"github.com/cjodra14/basketball-management/user_service/configuration"
+	"github.com/cjodra14/basketball-management/user_service/services"
+	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
+)
 
 var (
 	ErrInternalCellGrpcHandler       = errors.New("internal error")
@@ -18,87 +18,50 @@ var (
 )
 
 type UserServer struct {
-	// grpcAPI.
-	// telemetryService services.TelemetryService
+	grpcAPI.UnimplementedUserServiceServer
+	userService services.UserService
 }
 
-// func newTelemetryServerGrpc() grpcAPI.TelemetryServiceServer {
-// 	return &TelemetryServer{
-// 		telemetryService: telemetryService,
-// 	}
-// }
+func newUserServerGrpc(userService services.UserService) grpcAPI.UserServiceServer {
+	return &UserServer{
+		userService: userService,
+	}
+}
 
-// func InitTelemetryServiceServer(configuration grpcConfig.GRPCServerConfiguration, telemetryService services.TelemetryService) error {
-// 	grpcServer, err := commonsGrpc.Server(configuration, commonsGrpc.NewGrpcServerInterceptor())
-// 	if err != nil {
-// 		return err
-// 	}
+func InitUserServiceServer(configuration configuration.GRPCServer, userService services.UserService) error {
+	grpcServer, err := Server(configuration, NewGrpcServerInterceptor())
+	if err != nil {
+		return err
+	}
 
-// 	grpcService := newTelemetryServerGrpc(telemetryService)
-// 	grpcServer.RegisterService(&grpcAPI.TelemetryService_ServiceDesc, grpcService)
+	grpcService := newUserServerGrpc(userService)
+	grpcServer.RegisterService(&grpcAPI.UserService_ServiceDesc, grpcService)
 
-// 	err = grpcServer.Serve()
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
+	err = grpcServer.Serve()
+	if err != nil {
+		logrus.Fatal(err)
+	}
 
-// 	return nil
-// }
+	return nil
+}
 
-// func (telemetryServer *TelemetryServer) SaveTelemetry(ctx context.Context, in *grpcAPI.Telemetry) (*grpcAPI.TelemetryResponse, error) {
-// 	err := telemetryServer.telemetryService.SaveTelemetry(ctx, apiModels.Telemetry{
-// 		Timestamp: in.Timestamp,
-// 		UserID:    in.UserId,
-// 		GPS: apiModels.GPS{
-// 			Latitude:            in.Gps.Latitude,
-// 			Longitude:           in.Gps.Longitude,
-// 			Speed:               in.Gps.Speed,
-// 			Direction:           in.Gps.Direction,
-// 			ConnectedSatellites: in.Gps.ConnectedSatellites,
-// 		},
-// 		Accelerometer: apiModels.Accelerometer{
-// 			AngleX: in.Accelerometer.AngleX,
-// 			AngleY: in.Accelerometer.AngleY,
-// 			AngleZ: in.Accelerometer.AngleZ,
-// 			GForce: in.Accelerometer.GForce,
-// 		},
-// 	})
-// 	if err != nil {
-// 		return &grpcAPI.TelemetryResponse{}, err
-// 	}
+func (userServer *UserServer) GetUser(ctx context.Context, in *grpcAPI.GetUserRequest) (*grpcAPI.UserResponse, error) {
+	user, err := userServer.userService.Get(ctx, in.Id)
+	if err != nil {
+		return &grpcAPI.UserResponse{}, err
+	}
 
-// 	return &grpcAPI.TelemetryResponse{}, nil
-// }
+	return &grpcAPI.UserResponse{
+		Id:    user.ID,
+		Email: user.Email,
+		Role:  user.Role,
+	}, nil
+}
 
-// func (telemetryServer *TelemetryServer) GetUserTelemetry(ctx context.Context, in *grpcAPI.UserTelemetryRequest) (*grpcAPI.UserTelemetryResponse, error) {
-// 	telemetries, err := telemetryServer.telemetryService.GetuserTelemetries(ctx, in.UserId)
-// 	if err != nil {
-// 		return &grpcAPI.UserTelemetryResponse{}, err
-// 	}
+func (userServer *UserServer) CreateUser(ctx context.Context, in *grpcAPI.CreateUserRequest) (*grpcAPI.UserResponse, error) {
+	return &grpcAPI.UserResponse{}, nil
+}
 
-// 	grpcTelemetries := []*grpcAPI.Telemetry{}
-
-// 	for _, telemetry := range telemetries {
-// 		grpcTelemetries = append(grpcTelemetries, &grpcAPI.Telemetry{
-// 			Timestamp: telemetry.Timestamp,
-// 			UserId:    telemetry.UserID,
-// 			Gps: &grpcAPI.GPS{
-// 				Latitude:            telemetry.GPS.Latitude,
-// 				Longitude:           telemetry.GPS.Longitude,
-// 				Speed:               telemetry.GPS.Speed,
-// 				Direction:           telemetry.GPS.Direction,
-// 				ConnectedSatellites: telemetry.GPS.ConnectedSatellites,
-// 			},
-// 			Accelerometer: &grpcAPI.Accelerometer{
-// 				AngleX: telemetry.Accelerometer.AngleX,
-// 				AngleY: telemetry.Accelerometer.AngleY,
-// 				AngleZ: telemetry.Accelerometer.AngleZ,
-// 				GForce: telemetry.Accelerometer.GForce,
-// 			},
-// 		})
-// 	}
-
-// 	return &grpcAPI.UserTelemetryResponse{
-// 		Telemetries: grpcTelemetries,
-// 	}, nil
-// }
+func (userServer *UserServer) AuthenticateUser(ctx context.Context, in *grpcAPI.AuthenticateRequest) (*grpcAPI.TokenResponse, error) {
+	return &grpcAPI.TokenResponse{}, nil
+}
